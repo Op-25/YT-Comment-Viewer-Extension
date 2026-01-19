@@ -10,6 +10,9 @@ let nextPageToken = null;
 let isLoading = false;
 let currentVideoId = null;
 
+let numAPIcallsCurrentInstance = 0
+const maxAPIcallsPerInstance = 50
+
 function getYouTubeVideoID(url) {
     try {
         const urlObj = new URL(url);
@@ -46,7 +49,6 @@ async function fetchYoutubeComments(videoId, loadMore) {
         nextPageToken = null;
     }
 
-
     let url =
         `https://www.googleapis.com/youtube/v3/commentThreads` +
         `?part=snippet&videoId=${videoId}&maxResults=${MAX_RESULTS}` +
@@ -57,7 +59,20 @@ async function fetchYoutubeComments(videoId, loadMore) {
     }
 
     try {
+        console.log(numAPIcallsCurrentInstance, maxAPIcallsPerInstance)
+
+        if (numAPIcallsCurrentInstance > maxAPIcallsPerInstance) {
+            const warnDiv = document.createElement("div")
+            warnDiv.innerHTML = `
+                <div class="warning">
+                    You have exceeded the maximum allowed API calls. Sorry!
+                </div>
+            `
+            commentsContainer.appendChild(warnDiv)
+            return
+        } 
         const response = await fetch(url);
+        numAPIcallsCurrentInstance += 1
         if (!response.ok) throw new Error("API request failed");
 
         const data = await response.json();
