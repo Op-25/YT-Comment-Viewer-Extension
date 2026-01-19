@@ -4,38 +4,63 @@ const API_KEY = await getApiKey();
 const appStatus = document.getElementById("status");
 const commentsContainer = document.getElementById("comments");
 
-const MAX_RESULTS = 20;
+const MAX_RESULTS = 15;
 
 let nextPageToken = null;
 let isLoading = false;
 let currentVideoId = null;
 
-let numAPIcallsCurrentInstance = 0
+const MAX_COMMENTS_IN_DOM = 30
+let commentsEndedWarningDiv = null
+
 const maxAPIcallsPerInstance = 50
+let numAPIcallsCurrentInstance = 0
+let maxApiCallsReachedDiv = null
 
 function getYouTubeVideoID(url) {
     try {
         const urlObj = new URL(url);
 
+        // Standard watch URL
         if (urlObj.hostname.includes("youtube.com")) {
-            return urlObj.searchParams.get("v");
+            const v = urlObj.searchParams.get("v");
+            if (v) return v;
+
+            // Shorts URL: /shorts/VIDEO_ID
+            if (urlObj.pathname.startsWith("/shorts/")) {
+                return urlObj.pathname.split("/shorts/")[1].split("/")[0];
+            }
+
+            // Embed URL: /embed/VIDEO_ID
+            if (urlObj.pathname.startsWith("/embed/")) {
+                return urlObj.pathname.split("/embed/")[1].split("/")[0];
+            }
         }
 
+        // Shortened URL: youtu.be/VIDEO_ID
         if (urlObj.hostname.includes("youtu.be")) {
-            return urlObj.pathname.slice(1);
+            return urlObj.pathname.slice(1).split("/")[0];
         }
 
-        if (urlObj.pathname.includes("/embed/")) {
-            return urlObj.pathname.split("/embed/")[1];
-        }
     } catch {
         return null;
     }
+
     return null;
 }
 
 function formatDate(isoString) {
     return new Date(isoString).toISOString().split("T")[0];
+}
+
+function trimOldCommentsPreserveScroll() {
+    while (commentsContainer.children.length > MAX_COMMENTS_IN_DOM) {
+        const first = commentsContainer.firstChild;
+        const height = first.offsetHeight;
+
+        commentsContainer.removeChild(first);
+        commentsContainer.scrollTop -= height;
+    }
 }
 
 async function fetchYoutubeComments(videoId, loadMore) {
@@ -59,20 +84,24 @@ async function fetchYoutubeComments(videoId, loadMore) {
     }
 
     try {
-        console.log(numAPIcallsCurrentInstance, maxAPIcallsPerInstance)
+        if (numAPIcallsCurrentInstance >= maxAPIcallsPerInstance) {
+            isLoading = false
 
-        if (numAPIcallsCurrentInstance > maxAPIcallsPerInstance) {
-            const warnDiv = document.createElement("div")
-            warnDiv.innerHTML = `
+            if (maxApiCallsReachedDiv) {return}
+
+            maxApiCallsReachedDiv = document.createElement("div")
+            maxApiCallsReachedDiv.innerHTML = `
                 <div class="warning">
-                    You have exceeded the maximum allowed API calls. Sorry!
+                    You have exceeded the maximum allowed API calls, Sorry!
                 </div>
             `
-            commentsContainer.appendChild(warnDiv)
+            commentsContainer.appendChild(maxApiCallsReachedDiv)
             return
         } 
+        
         const response = await fetch(url);
         numAPIcallsCurrentInstance += 1
+
         if (!response.ok) throw new Error("API request failed");
 
         const data = await response.json();
@@ -106,7 +135,8 @@ async function fetchYoutubeComments(videoId, loadMore) {
 
             commentsContainer.appendChild(div);
         });
-
+        trimOldCommentsPreserveScroll()
+        
         nextPageToken = data.nextPageToken || null;
 
     } catch (error) {
@@ -118,18 +148,34 @@ async function fetchYoutubeComments(videoId, loadMore) {
 }
 
 document.addEventListener("scroll", () => {
-    const nearBottom =
-        window.scrollY + window.innerHeight >= document.body.scrollHeight;
+    const nearBottom = window.scrollY + window.innerHeight >= document.body.scrollHeight;
 
-    if (nearBottom && nextPageToken && !isLoading) {
-        fetchYoutubeComments(currentVideoId, true);
+    console.log(commentsContainer.children.length)
+
+    if (nearBottom && !isLoading) {
+        if (nextPageToken) {
+            fetchYoutubeComments(currentVideoId, true);
+
+        } else if (!commentsEndedWarningDiv) {
+            commentsEndedWarningDiv = document.createElement("div")
+            commentsEndedWarningDiv.innerHTML = `
+                <div class="warning">
+                    Reached the end of the comment section, Sorry!
+                </div>
+            `
+            commentsContainer.appendChild(commentsEndedWarningDiv)
+        }
     }
 });
 
 chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
     const url = tabs[0]?.url;
-    const videoId = getYouTubeVideoID(url);
+    if (!url) {
+        appStatus.textContent = "No active tab!";
+        return;
+    }
 
+    const videoId = getYouTubeVideoID(url);
     if (!videoId) {
         appStatus.textContent = "Not a YouTube video!";
         return;
