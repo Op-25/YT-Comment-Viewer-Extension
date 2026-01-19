@@ -1,0 +1,14 @@
+{
+  "name": "YT Comment Viewer",
+  "version": "1.0.0",
+  "description": "View YouTube comments from the current tab.",
+  "manifest_version": 3,
+  "permissions": ["tabs"],
+  "icons": {
+    "48": "icon.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "YT Comment Viewer"
+  }
+}

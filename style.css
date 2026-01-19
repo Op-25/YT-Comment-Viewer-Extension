@@ -1,0 +1,55 @@
+body {
+    width: 320px;
+    padding: 10px;
+
+    background-color: #121212;
+    
+    color: aliceblue;
+    font-family: monospace;
+
+    font-size: 13px;
+    line-height: 1.15;
+
+    overflow-y: auto;
+}
+
+.comment {
+    border-bottom: 1px solid #767676;
+    padding: 8px 0px;
+}
+
+.comment-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.profile-image {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.profile-link {
+    color: rgb(45, 197, 197);
+}
+
+.author {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.date {
+    font-size: 13px;
+}
+
+.likes {
+    font-size: 13px;
+}
+
+.text {
+    margin-top: 4px;
+    margin-bottom: 4px;
+}
