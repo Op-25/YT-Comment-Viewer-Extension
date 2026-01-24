@@ -150,8 +150,6 @@ async function fetchYoutubeComments(videoId, loadMore) {
 document.addEventListener("scroll", () => {
     const nearBottom = window.scrollY + window.innerHeight >= document.body.scrollHeight;
 
-    console.log(commentsContainer.children.length)
-
     if (nearBottom && !isLoading) {
         if (nextPageToken) {
             fetchYoutubeComments(currentVideoId, true);
